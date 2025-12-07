@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  twitch-vod-downloader:
+    build: .
+    container_name: twitch-vod-downloader
+    restart: unless-stopped
+    environment:
+      - TZ=America/Los_Angeles
+      - CHANNELS=username1,username2
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=morgan@windsofstorm.net
+      - SMTP_PASSWORD=your_app_password_here
+      - SMTP_FROM=morgan@windsofstorm.net
+      - SMTP_TO=morgan@windsofstorm.net
+    volumes:
+      - /mnt/myzmirror/twitch_vods:/data
