@@ -22,6 +22,8 @@ def get_channels():
     return channels
 
 BASE_DIR = pathlib.Path(os.getenv("DATA_DIR", "/data")).resolve()
+DATA_PATH_PREFIX = "/data"
+VOD_REAL_PATH = os.getenv("VOD_REAL_PATH")
 
 def ensure_base_dir():
     try:
@@ -79,6 +81,21 @@ def parse_vod_id(entry: str) -> str:
         return parts[1]
     return entry
 
+def find_vod_files(ch_dir: pathlib.Path, vod_id: str):
+    if not ch_dir.exists():
+        return []
+    matches = []
+    for path in ch_dir.glob(f"*{vod_id}*"):
+        if path.is_file() and path.suffix != ".part":
+            matches.append(path.resolve())
+    return sorted(matches)
+
+def display_path(path: pathlib.Path) -> str:
+    raw = str(path.resolve())
+    if VOD_REAL_PATH and raw.startswith(DATA_PATH_PREFIX):
+        raw = f"{VOD_REAL_PATH.rstrip('/')}{raw[len(DATA_PATH_PREFIX):]}"
+    return raw
+
 def run_once(channels):
     log("Starting VOD sync run...")
     new_downloads = []
@@ -127,8 +144,19 @@ def run_once(channels):
             per_channel.setdefault(ch, []).append(vid)
 
         lines = []
+        seen_paths = set()
         for ch, vids in per_channel.items():
-            lines.append(f"{ch}: {len(vids)} new VOD(s): " + ", ".join(vids))
+            ch_dir = BASE_DIR / ch
+            for vid in vids:
+                files = find_vod_files(ch_dir, vid)
+                if not files:
+                    log(f"WARNING: Could not locate downloaded file for VOD '{vid}' in {ch_dir}.")
+                    files = [(ch_dir / vid).resolve()]
+                for file_path in files:
+                    rendered = display_path(file_path)
+                    if rendered not in seen_paths:
+                        seen_paths.add(rendered)
+                        lines.append(f"- {rendered}")
 
         body = "New Twitch VODs downloaded this run:\n\n" + "\n".join(lines)
         send_email("[twitch-vod-downloader] New VODs downloaded", body)

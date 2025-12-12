@@ -39,10 +39,11 @@ This project is designed for TrueNAS SCALE, Docker Compose, or any Linux host.
 | SMTP_FROM | No | From address |
 | SMTP_TO | No | Recipient address |
 | DATA_DIR | No | Override default `/data` |
+| VOD_REAL_PATH | No | Replace the `DATA_DIR` prefix in email notifications with a host path (for example `/mnt/myzmirror/twitch_vods`) |
 
 ## Email Notifications
 
-A single email is sent per run if new VODs are detected.
+A single email is sent per run if new VODs are detected. The email lists each downloaded file as its own bullet with the full path. If your host path differs from the container mount, set `VOD_REAL_PATH` so the email shows the host path instead of the container's `DATA_DIR` path.
 
 ## docker-compose.yml
 
