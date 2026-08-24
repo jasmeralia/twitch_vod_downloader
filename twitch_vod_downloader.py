@@ -1,4 +1,6 @@
+import argparse
 import datetime
+import os
 import pathlib
 import smtplib
 import ssl
@@ -185,10 +187,28 @@ def run_once(channels):
     return new_downloads
 
 
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Twitch VOD downloader")
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Run a single sync and exit instead of the self-scheduling daemon loop "
+        "(equivalent to setting RUN_ONCE=1).",
+    )
+    return parser.parse_args(argv)
+
+
 def main():
+    args = parse_args()
     channels = get_channels()
     ensure_base_dir()
     log("Configured channels: " + ", ".join(channels))
+
+    if args.once or os.environ.get("RUN_ONCE") == "1":
+        log("Running a single sync (--once/RUN_ONCE) and exiting...")
+        run_once(channels)
+        return
+
     log("Running initial sync on startup...")
     run_once(channels)
 

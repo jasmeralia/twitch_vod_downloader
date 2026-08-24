@@ -2,6 +2,7 @@ import datetime
 import pathlib
 import smtplib
 import subprocess
+import sys
 from typing import ClassVar
 
 import pytest
@@ -331,6 +332,14 @@ def test_run_once_warns_when_downloaded_file_missing(
     assert "222" in sent[0][1]
 
 
+def test_parse_args_defaults_to_daemon_mode() -> None:
+    assert downloader.parse_args([]).once is False
+
+
+def test_parse_args_once_flag() -> None:
+    assert downloader.parse_args(["--once"]).once is True
+
+
 def test_main_runs_initial_sync_then_scheduled_loop(monkeypatch) -> None:
     class StopLoop(Exception):
         pass
@@ -338,6 +347,7 @@ def test_main_runs_initial_sync_then_scheduled_loop(monkeypatch) -> None:
     run_once_calls = []
     sleep_calls = []
 
+    monkeypatch.setattr(sys, "argv", ["twitch_vod_downloader"])
     monkeypatch.setattr(downloader, "get_channels", lambda: ["chan1"])
     monkeypatch.setattr(downloader, "ensure_base_dir", lambda: None)
     monkeypatch.setattr(
@@ -357,3 +367,44 @@ def test_main_runs_initial_sync_then_scheduled_loop(monkeypatch) -> None:
 
     assert run_once_calls == [["chan1"], ["chan1"]]
     assert sleep_calls == [0, 0]
+
+
+def test_main_runs_once_and_exits_with_once_flag(monkeypatch) -> None:
+    run_once_calls = []
+
+    monkeypatch.setattr(sys, "argv", ["twitch_vod_downloader", "--once"])
+    monkeypatch.setattr(downloader, "get_channels", lambda: ["chan1"])
+    monkeypatch.setattr(downloader, "ensure_base_dir", lambda: None)
+    monkeypatch.setattr(
+        downloader, "run_once", lambda channels: run_once_calls.append(channels)
+    )
+
+    def fail_sleep(seconds):
+        raise AssertionError("daemon loop should not run in --once mode")
+
+    monkeypatch.setattr(downloader.time, "sleep", fail_sleep)
+
+    downloader.main()
+
+    assert run_once_calls == [["chan1"]]
+
+
+def test_main_runs_once_and_exits_with_run_once_env_var(monkeypatch) -> None:
+    run_once_calls = []
+
+    monkeypatch.setattr(sys, "argv", ["twitch_vod_downloader"])
+    monkeypatch.setenv("RUN_ONCE", "1")
+    monkeypatch.setattr(downloader, "get_channels", lambda: ["chan1"])
+    monkeypatch.setattr(downloader, "ensure_base_dir", lambda: None)
+    monkeypatch.setattr(
+        downloader, "run_once", lambda channels: run_once_calls.append(channels)
+    )
+
+    def fail_sleep(seconds):
+        raise AssertionError("daemon loop should not run in RUN_ONCE mode")
+
+    monkeypatch.setattr(downloader.time, "sleep", fail_sleep)
+
+    downloader.main()
+
+    assert run_once_calls == [["chan1"]]

@@ -40,6 +40,7 @@ This project is designed for TrueNAS SCALE, Docker Compose, or any Linux host.
 | SMTP_TO | No | Recipient address |
 | DATA_DIR | No | Override default `/data` |
 | VOD_REAL_PATH | No | Replace the `DATA_DIR` prefix in email notifications with a host path (for example `/mnt/myzmirror/twitch_vods`) |
+| RUN_ONCE | No | Set to `1` to run a single sync and exit instead of the self-scheduling daemon loop (equivalent to the `--once` CLI flag) |
 
 ## Email Notifications
 
@@ -75,6 +76,26 @@ docker compose build
 docker compose up -d
 docker logs -f twitch-vod-downloader
 ```
+
+## Running a single sync (native cron / uv)
+
+By default the app runs an initial sync on startup and then self-schedules a
+daily run at 3:00 AM Pacific Time — this is the behavior used by the Docker
+container above. For deployments driven by an external scheduler (such as a
+native TrueNAS cron job invoking the app via `uv`), pass `--once` or set
+`RUN_ONCE=1` to run a single sync and exit instead:
+
+```bash
+uv run python -m twitch_vod_downloader --once
+```
+
+```bash
+RUN_ONCE=1 uv run python -m twitch_vod_downloader
+```
+
+`pyproject.toml`/`uv.lock` describe the runtime dependencies for this mode.
+`requirements.txt` remains the source of truth for the Docker image build; the
+two are kept in sync manually.
 
 ## Development
 
